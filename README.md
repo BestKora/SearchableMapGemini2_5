@@ -1,5 +1,5 @@
 ## SwiftUI iOS Apps “Map with Search” in Tandem with AI Gemini 2.5 Pro Experimental
- <img src="https://github.com/BestKora/SearchableMapGemini2_5/blob/a271460a4856f17822e41df09b13bc852973ee51/SearchableMap.png" width="850">
+ <img src="https://github.com/BestKora/SearchableMapGemini2_5/blob/a271460a4856f17822e41df09b13bc852973ee51/SearchableMap.png" width="750">
 
  I teamed up with Google's brilliant AI, Gemini 2.5 Pro Experimental, to create an app that works like this:
  
@@ -12,3 +12,5 @@
 * You can also select the location you need directly from the list of suggestions, in which case a LookAroundPreview also appears at the bottom.
 
 ### Ask Gwmini 2.5 Pro Experimental (part 1)
+
+<img src="https://github.com/BestKora/SearchableMapGemini2_5/blob/a93cd4590f488d9a35a3d54927f822fa3e0045b6/Stage1.png" width="850">
