@@ -14,3 +14,7 @@
 ### Ask Gwmini 2.5 Pro Experimental (part 1)
 
 <img src="https://github.com/BestKora/SearchableMapGemini2_5/blob/a93cd4590f488d9a35a3d54927f822fa3e0045b6/Stage1.png" width="850">
+
+### Ask Gwmini 2.5 Pro Experimental (part 2)
+
+<img src="https://github.com/BestKora/SearchableMapGemini2_5/blob/a93cd4590f488d9a35a3d54927f822fa3e0045b6/Stage1.png" width="850">
