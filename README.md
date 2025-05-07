@@ -24,16 +24,35 @@ The task has been solved: we have a flawlessly working iOS application “Map wi
 ### Benefits of using Gemini 2.5 Pro:
 
 1. #### Instant refactoring magic:
-   Remember that slightly tangled LocationService? Gemini 2.5 Pro untangled the wires so SheetView wouldn't create its own instance of the service all over the place. It also tidied up the data models. It was like a super-fast assistant that actually enjoys tidying up code. Why is this good? It makes testing easier, prevents weird state bugs, and generally makes code less spaghetti-like. Huge time saver on tedious tasks.
+   Remember that slightly tangled LocationService? Gemini suggested dependency injection, basically untangling the wires so SheetView wasn't creating its own service instance willy-nilly. It cleaned up data models too. It was like having a super-fast assistant who actually enjoys tidying up code. Why is this good? It makes testing easier, prevents weird state bugs, and generally makes the code less spaghetti-like. Huge time saver on the boring stuff.
 
-3. #### Framework charmer:
-   Need to get search suggestions from MapKit (MKLocalSearchCompleter)? Done. Need to do an actual search (MKLocalSearch)? No problem. Need that cool LookAroundPreview? Gemini knew the right APIs and generated the basic async/await logic faster than I could type import MapKit. He clearly devoured the entire MapKit documentation.
+3. #### Framework Whisperer:
+   Need to fetch MapKit search suggestions (MKLocalSearchCompleter)? Done. Need to perform an actual search (MKLocalSearch)? No problem. Need that cool LookAroundPreview? Gemini knew the APIs and generated the basic async/await fetching logic faster than I could type the import statement. It clearly had ingested the MapKit manuals.
 
-5. #### Proficient at pattern recognition:
-   He not only knew the APIs, but also how to use them together. Implementing the "show search button after first search" logic involved managing @State variables and conditional UI rendering - standard stuff, but Gemini put it all together correctly based on the request. Later, he even suggested factoring out complex View logic into separate components or computed properties, which is a great practice.
+5. #### Pattern Recognition Pro:
+   Beyond just knowing APIs, it understood how to use them together. Implementing the "show a search button after the first search" logic involved managing @State variables and conditional UI – standard stuff, but Gemini pieced it together correctly based on the request. It even suggested extracting UI chunks into computed properties later on, which is good practice.
 
 7. #### Building Blocks:
-   He was happy to add features one at a time. We started with a refactoring, added search, added Look Around, added a re-search button... he was pretty good at tracking an evolving codebase.
+   It happily added features sequentially. We started with refactoring, added search, added Look Around, added the re-search button... it kept track of the evolving codebase reasonably well.
 
 9. #### Explanatory Ability:
     He could explain the logic and benefits of his particular refactoring approaches.
+
+   ### Downsides of using Gemini 2.5 Pro:
+
+1. #### Syntactic stumbling blocks:
+   Sometimes Gemini would confidently produce code with small but fatal flaws. The most memorable was ignoresSafeArea(edges: .top, treatingAs: .edge). The treatingAs parameter? It doesn't exist! It was hallucinating a perfectly plausible (but invalid) modifier argument. This was a tricky bug that was not easy to find. Misplacing onDismiss was another example.
+
+3. #### Context juggling:
+   While it mostly got it right, when debugging a complex compiler error it felt like it was almost losing track of which modifiers were being applied where, requiring clearer instructions from me. Its short-term memory occasionally broke under the strain.
+
+5. #### Confidence is Key (Even if Wrong):
+   The AI ​​presents both brilliant and buggy code with exactly the same level of "Here you go, human!" confidence. There is no "Hmm, I'm not sure about this part...", which means you have to be a skeptic, a tester, someone who double-checks its work.
+
+   ###  Philosophical conclusion
+
+At the end of our digital tandem, it became clear: Gemini 2.5 Pro Experimental is not a magic wand that fulfills the developer's wishes, but rather a talented, but sometimes absent-minded intern. It can generate boilerplate code at lightning speed and even offer elegant architectural solutions, but when it comes to the tricky traps of declarative SwiftUI in the form of complex View hierarchies or long chains of modifiers, it still needs the firm hand of an experienced mentor.
+
+
+
+   
