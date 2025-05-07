@@ -10,3 +10,5 @@
 * Clicking on different markers gives us different LookAroundPreviews at the bottom.
 * Clicking anywhere on the map outside of LookAroundPreview brings back the search bar with the list of suggestions and starts searching again.
 * You can also select the location you need directly from the list of suggestions, in which case a LookAroundPreview also appears at the bottom.
+
+### Ask Gwmini 2.5 Pro Experimental (part 1)
