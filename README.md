@@ -13,11 +13,11 @@
 
 ### Ask Gemini 2.5 Pro Experimental (part 1)
 
-<img src="https://github.com/BestKora/SearchableMapGemini2_5/blob/a93cd4590f488d9a35a3d54927f822fa3e0045b6/Stage1.png" width="800">
+<img src="https://github.com/BestKora/SearchableMapGemini2_5/blob/a93cd4590f488d9a35a3d54927f822fa3e0045b6/Stage1.png" width="750">
 
 ### Ask Gemini 2.5 Pro Experimental (part 2)
 
-<img src="https://github.com/BestKora/SearchableMapGemini2_5/blob/8db96860e93df8536f389adbd27a043f7433258c/Stage2.png" width="800">
+<img src="https://github.com/BestKora/SearchableMapGemini2_5/blob/8db96860e93df8536f389adbd27a043f7433258c/Stage2.png" width="750">
 
 The task has been solved: we have a flawlessly working iOS application “Map with Search”.
 
@@ -52,6 +52,8 @@ The task has been solved: we have a flawlessly working iOS application “Map wi
    ###  Philosophical conclusion
 
 At the end of our digital tandem, it became clear: Gemini 2.5 Pro Experimental is not a magic wand that fulfills the developer's wishes, but rather a talented, but sometimes absent-minded intern. It can generate boilerplate code at lightning speed and even offer elegant architectural solutions, but when it comes to the tricky traps of declarative SwiftUI in the form of complex View hierarchies or long chains of modifiers, it still needs the firm hand of an experienced mentor.
+
+<img src="https://github.com/BestKora/SearchableMapGemini2_5/blob/a1dfb93950f1270d0389e08ca909bbf3865a26fe/FinalStage.gif" width="750">
 
 
 
