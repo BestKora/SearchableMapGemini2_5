@@ -2,100 +2,78 @@
 //  SheetView.swift
 //  MapView Step 2
 //
-//  Created by Tatiana Kornilova on 16.04.2025.
-//
 
 import SwiftUI
-import MapKit
 
 struct SheetView: View {
-    // Use @Bindable for two-way binding with @Observable service
     @Bindable var locationService: LocationService
-    @State private var search: String = ""
-
-    // Environment variable to dismiss the sheet
-    @Environment(\.dismiss) var dismiss
+    @State private var searchText = ""
 
     var body: some View {
-        VStack(spacing: 0) { // Use spacing 0 and add padding manually if needed
-            // Search Bar Area
-            HStack {
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass")
-                    .foregroundColor(.secondary)
-                TextField("Search for a place or address", text: $search)
+                    .foregroundStyle(.secondary)
+                TextField("Search for a place or address", text: $searchText)
                     .autocorrectionDisabled()
-                    .onSubmit(performSearch) // Search when return key is pressed
+                    .textInputAutocapitalization(.words)
+                    .submitLabel(.search)
+                    .onSubmit(performSearch)
+                if !searchText.isEmpty {
+                    Button("Clear", systemImage: "xmark.circle.fill") {
+                        searchText = ""
+                        locationService.update(queryFragment: "")
+                    }
+                    .labelStyle(.iconOnly)
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel("Clear search")
+                }
             }
-            .modifier(TextFieldGrayBackgroundColor()) // Apply custom style
+            .padding(12)
+            .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
             .padding()
 
             Divider()
 
-            // List of Completions
             List {
-                // Display suggestions if available
-                ForEach(locationService.completions) { completion in
-                    Button(action: { didTapOnCompletion(completion) }) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(completion.title)
-                                .font(.headline)
-                                .foregroundColor(.primary) // Ensure text is readable
-                            Text(completion.subTitle)
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
+                if locationService.isSearching {
+                    HStack {
+                        ProgressView()
+                        Text("Searching…")
                     }
-                    .listRowBackground(Color.clear) // Optional: Make background transparent
+                    .foregroundStyle(.secondary)
                 }
 
-                 // Show message if query entered but no completions
-                if !search.isEmpty && locationService.completions.isEmpty && locationService.error == nil {
-                     ContentUnavailableView.search(text: search)
-                         // .listRowBackground(Color.clear) // Match background if needed
+                ForEach(locationService.completions) { completion in
+                    Button { performSearch(for: completion) } label: {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(completion.title).font(.headline)
+                            if !completion.subtitle.isEmpty {
+                                Text(completion.subtitle).font(.subheadline).foregroundStyle(.secondary)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                if !searchText.isEmpty && locationService.completions.isEmpty && !locationService.isSearching {
+                    ContentUnavailableView.search(text: searchText)
                 }
             }
             .listStyle(.plain)
-            .scrollContentBackground(.hidden) // Hide default list background
-
         }
-        // Update completions live as the user types
-        .onChange(of: search) { _, newValue in
-            locationService.update(queryFragment: newValue)
-        }
-        // You might want to add error display within the sheet too
-        .alert("Search Error", isPresented: Binding(get: { locationService.error != nil }, set: { _ in locationService.error = nil }), presenting: locationService.error) { _ in
-             Button("OK") {}
-        } message: { error in
-             Text(error.localizedDescription)
+        .onChange(of: searchText) { _, query in
+            locationService.update(queryFragment: query)
         }
     }
 
-    // MARK: - Actions
     private func performSearch() {
-        guard !search.isEmpty else { return }
-        Task {
-            await locationService.search(with: search)
-             // Sheet dismissal is now handled by SearchableMap's onChange(of: searchResults)
-        }
+        Task { await locationService.search(with: searchText) }
     }
 
-    private func didTapOnCompletion(_ completion: SearchCompletions) {
-        Task {
-            await locationService.search(for: completion)
-             // Sheet dismissal is now handled by SearchableMap's onChange(of: searchResults)
-        }
+    private func performSearch(for completion: SearchCompletion) {
+        searchText = completion.title
+        Task { await locationService.search(for: completion) }
     }
 }
-
-// MARK: - View Modifier for Text Field Style
-struct TextFieldGrayBackgroundColor: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .padding(12)
-            .background(Color(.systemGray6)) // Use semantic colors
-            .cornerRadius(10) // Slightly rounder corners
-            .foregroundColor(.primary)
-    }
-}
-
-
