@@ -2,30 +2,31 @@
 //  LocationService.swift
 //  MapView Step 2
 //
-//  Created by Tatiana Kornilova on 16.04.2025.
-//
 
+import CoreLocation
 import MapKit
-import CoreLocation // Ensure CoreLocation is imported
+import Observation
 
-// Represents a search suggestion
-struct SearchCompletions: Identifiable {
-    let id = UUID()
-    let title: String
-    let subTitle: String
-    // We can store the original MKLocalSearchCompletion if needed for more complex actions later
-    // let mapKitCompletion: MKLocalSearchCompletion
+struct SearchCompletion: Identifiable {
+    let completion: MKLocalSearchCompletion
+
+    var id: String { "\(completion.title)|\(completion.subtitle)" }
+    var title: String { completion.title }
+    var subtitle: String { completion.subtitle }
 }
 
-// Represents a pin/marker on the map
-struct SearchResult: Identifiable, Hashable, Equatable {
-    let id = UUID()
-    let name: String
-    let location: CLLocationCoordinate2D
-    let mapItem: MKMapItem // Store the original map item
+struct SearchResult: Identifiable, Hashable {
+    let mapItem: MKMapItem
 
-    // Conformance for Map selection and comparison
-    static func == (lhs: SearchResult, rhs: SearchResult) -> Bool {
+    var id: String {
+        let coordinate = mapItem.placemark.coordinate
+        return "\(mapItem.name ?? "Unknown Place")|\(coordinate.latitude)|\(coordinate.longitude)"
+    }
+
+    var name: String { mapItem.name ?? "Unknown Place" }
+    var location: CLLocationCoordinate2D { mapItem.placemark.coordinate }
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.id == rhs.id
     }
 
@@ -34,151 +35,121 @@ struct SearchResult: Identifiable, Hashable, Equatable {
     }
 }
 
-@Observable // Use @Observable for modern Swift concurrency state management
-class LocationService: NSObject, MKLocalSearchCompleterDelegate {
-    private let completer: MKLocalSearchCompleter
+@MainActor
+@Observable
+final class LocationService: NSObject, MKLocalSearchCompleterDelegate {
+    private let completer = MKLocalSearchCompleter()
     private var currentSearch: MKLocalSearch?
+    private var searchGeneration = 0
 
-    // --- Published Properties (Observable updates views) ---
-    var completions = [SearchCompletions]()
-    var searchResults = [SearchResult]()
+    var completions: [SearchCompletion] = []
+    var searchResults: [SearchResult] = []
     var error: Error?
-    var region: MKCoordinateRegion? // Optional region to focus the map
+    var region: MKCoordinateRegion?
+    var isSearching = false
 
-    // --- Initialization ---
     override init() {
-        self.completer = MKLocalSearchCompleter()
         super.init()
-        self.completer.delegate = self
-        // Configure completer (optional: filter results, etc.)
-        self.completer.resultTypes = [ .pointOfInterest]//[.address, .pointOfInterest]
-        // Optionally filter by region if needed
-        // self.completer.region = MKCoordinateRegion(.world)
+        completer.delegate = self
+        completer.resultTypes = [.address, .pointOfInterest]
     }
 
-    // --- Public Methods ---
     func update(queryFragment: String) {
-        // Reset previous results and errors on new query
-        self.completions = []
-        self.error = nil
-        completer.queryFragment = queryFragment
+        error = nil
+        completions = []
+        completer.queryFragment = queryFragment.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    // --- MKLocalSearchCompleterDelegate ---
     func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
-        // Map completer results to our SearchCompletions struct
-        self.completions = completer.results.map { completion in
-            // Extracting title parts can be useful if subtitle is long
-            // let title = completion.title
-            // let subTitle = completion.subtitle
-            .init(title: completion.title, subTitle: completion.subtitle /*, mapKitCompletion: completion */)
-        }
-        self.error = nil
+        completions = completer.results.map(SearchCompletion.init)
+        error = nil
     }
 
     func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
-        print("❌ Completer failed with error: \(error.localizedDescription)")
         self.error = error
-        self.completions = []
+        completions = []
     }
 
-    // --- Search Execution ---
-    func search ( with query: String) async {
-        // Ensure query isn't empty
-        guard !query.isEmpty else {
-             self.searchResults = []
-             self.region = nil
-             return
-        }
+    func search(with query: String) async {
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedQuery.isEmpty else { return }
 
-        // Cancel any ongoing search
-        currentSearch?.cancel()
-
-        // Prepare the search request
         let request = MKLocalSearch.Request()
-        request.naturalLanguageQuery = query
-       // request.resultTypes = [.address, .pointOfInterest]
-        request.resultTypes = [ .pointOfInterest]
-         // You could bias search results towards the current map view region if desired
-         // if let mapRegion = self.currentMapRegion { // Assuming you have a way to get the current map region
-         //     request.region = mapRegion
-         // }
+        request.naturalLanguageQuery = trimmedQuery
+        request.resultTypes = [.address, .pointOfInterest]
+        await startSearch(request)
+    }
 
+    func search(for completion: SearchCompletion) async {
+        await startSearch(MKLocalSearch.Request(completion: completion.completion))
+    }
+
+    func clearSearch() {
+        currentSearch?.cancel()
+        currentSearch = nil
+        searchGeneration += 1
+        completions = []
+        searchResults = []
+        region = nil
+        error = nil
+        isSearching = false
+    }
+
+    private func startSearch(_ request: MKLocalSearch.Request) async {
+        currentSearch?.cancel()
+        searchGeneration += 1
+        let generation = searchGeneration
         let search = MKLocalSearch(request: request)
-        self.currentSearch = search
-        self.error = nil // Reset error before search
-
-        print("➡️ Performing search for: \(query)")
+        currentSearch = search
+        isSearching = true
+        error = nil
 
         do {
             let response = try await search.start()
-            self.currentSearch = nil // Clear current search reference
+            guard generation == searchGeneration else { return }
 
-            // Map MKMapItems to our SearchResult struct
-            self.searchResults = response.mapItems.compactMap { mapItem in
-                guard let location = mapItem.placemark.location?.coordinate else { return nil }
-                return SearchResult(name: mapItem.name ?? "Unknown Place", location: location, mapItem: mapItem)
+            let results = response.mapItems.compactMap { mapItem -> SearchResult? in
+                guard CLLocationCoordinate2DIsValid(mapItem.placemark.coordinate) else { return nil }
+                return SearchResult(mapItem: mapItem)
             }
-
-            // Calculate a region encompassing all results
-            self.region = calculateRegion(for: self.searchResults)
-
-            print("✅ Search successful, found \(self.searchResults.count) results.")
-
+            searchResults = results
+            region = region(enclosing: results)
+            completions = []
+        } catch is CancellationError {
+            // A newer request has replaced this one; preserve its state.
         } catch {
-            self.currentSearch = nil // Clear current search reference
-            // Handle errors, including cancellation
-            if let nsError = error as NSError?, nsError.code == NSUserCancelledError {
-                 print(" Canceled search.")
-                 // Don't necessarily clear results if cancelled due to new search starting
-            } else if let mkError = error as? MKError, mkError.code == .placemarkNotFound {
-                print("ℹ️ No results found for '\(query)'.")
-                self.searchResults = []
-                self.region = nil
-                 // Optionally set a specific "not found" error state instead of generic error
-            } else {
-                print("❌ Search failed with error: \(error.localizedDescription)")
-                self.error = error
-                self.searchResults = []
-                self.region = nil
-            }
+            guard generation == searchGeneration else { return }
+            error = error
+            searchResults = []
+            region = nil
         }
+
+        guard generation == searchGeneration else { return }
+        currentSearch = nil
+        isSearching = false
     }
 
-    // Helper function to search based on a completion item
-    func search(for completion: SearchCompletions) async {
-        // Create a more specific query from the completion
-        let query = "\(completion.title), \(completion.subTitle)"
-        await search(with: query)
-    }
-
-
-    // --- Helper for calculating region ---
-    private func calculateRegion(for results: [SearchResult]) -> MKCoordinateRegion? {
-        guard !results.isEmpty else { return nil }
-
-        if results.count == 1, let firstResult = results.first {
-            // For a single result, center on it with a reasonable span
-             return MKCoordinateRegion(center: firstResult.location, latitudinalMeters: 1000, longitudinalMeters: 1000) // 1km span
-        } else {
-            // For multiple results, calculate bounding box
-            var minLat = 90.0
-            var maxLat = -90.0
-            var minLon = 180.0
-            var maxLon = -180.0
-
-            for result in results {
-                let coord = result.location
-                minLat = min(minLat, coord.latitude)
-                maxLat = max(maxLat, coord.latitude)
-                minLon = min(minLon, coord.longitude)
-                maxLon = max(maxLon, coord.longitude)
-            }
-
-            let center = CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2.0, longitude: (minLon + maxLon) / 2.0)
-            let span = MKCoordinateSpan(latitudeDelta: (maxLat - minLat) * 1.4, longitudeDelta: (maxLon - minLon) * 1.4) // Add padding (* 1.4)
-
-            return MKCoordinateRegion(center: center, span: span)
+    private func region(enclosing results: [SearchResult]) -> MKCoordinateRegion? {
+        guard let first = results.first else { return nil }
+        guard results.count > 1 else {
+            return MKCoordinateRegion(center: first.location, latitudinalMeters: 1_000, longitudinalMeters: 1_000)
         }
+
+        let mapRect = results.reduce(MKMapRect.null) { rect, result in
+            rect.union(MKMapRect(origin: MKMapPoint(result.location), size: .init(width: 0, height: 0)))
+        }
+        return MKCoordinateRegion(mapRect).expanded(by: 1.25)
+    }
+}
+
+private extension MKCoordinateRegion {
+    func expanded(by factor: CLLocationDegrees) -> Self {
+        .init(
+            center: center,
+            span: .init(
+                latitudeDelta: max(span.latitudeDelta * factor, 0.01),
+                longitudeDelta: max(span.longitudeDelta * factor, 0.01)
+            )
+        )
     }
 }
